@@ -61,6 +61,11 @@ func (r *retag) getStructTags(filename string) {
 			break
 		}
 
+		//skip empty line in message
+		if len(line) <= 0 {
+			continue
+		}
+
 		if strings.HasPrefix(strings.TrimSpace(string(line)), "/*") {
 			comment = true
 		}
@@ -91,6 +96,10 @@ func (r *retag) getStructTags(filename string) {
 			}
 
 			k, v := getFieldTag(string(line), msgName)
+			if k == "" || v == "" {
+				continue
+			}
+
 			r.tags[k] = v
 
 			if len(strings.Split(k, ".")[1]) > r.fieldMaxLen {
@@ -109,6 +118,10 @@ func (r *retag) getStructTags(filename string) {
 
 func getFieldTag(line string, msgName string) (field string, tag string) {
 	fts := strings.Split(line, "//")
+	if len(fts) <= 1 {
+		return "", ""
+	}
+
 	tag = fts[1]
 	fs := strings.Fields(fts[0])
 	fsl := len(fs)
