@@ -1,7 +1,6 @@
 package retag
 
 import (
-	"Nami/lib/log"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -172,7 +171,6 @@ func (r *retag) retag() {
 	msgNameStack := NewStack()
 	for {
 		line, _, err := reader.ReadLine()
-		log.Info(string(line))
 		if err != nil {
 			buf.WriteString("\n")
 			break
