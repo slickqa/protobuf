@@ -1,6 +1,7 @@
 package retag
 
 import (
+	"Nami/lib/log"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -51,10 +52,9 @@ func (r *retag) getStructTags(filename string) {
 	defer file.Close()
 
 	r.tags = make(map[string]string)
-	var begin bool
 	var comment bool
-	var msgName string
 	reader := bufio.NewReader(file)
+	msgNameStack := NewStack()
 	for {
 		line, _, err := reader.ReadLine()
 		if err != nil {
@@ -79,26 +79,27 @@ func (r *retag) getStructTags(filename string) {
 			continue
 		}
 
+		//fmt.Println("------", string(line))
 		if strings.HasPrefix(strings.TrimSpace(string(line)), "message") {
-			begin = true
-			msgName = strings.Fields(string(line))[1]
+			if msgNameStack.GetPOP() != "" {
+				msgNameStack.PUSH(msgNameStack.GetPOP() + "_" + strings.Fields(string(line))[1])
+			} else {
+				msgNameStack.PUSH(strings.Fields(string(line))[1])
+			}
 			continue
 		}
 
-		if begin == true && line[0] == '}' {
-			begin = false
+		if msgNameStack.GetPOP() != "" && strings.TrimSpace(string(line))[0] == '}' {
+			msgNameStack.POP()
 			continue
 		}
 
-		if begin == true {
+		if msgNameStack.GetPOP() != "" {
 			if strings.HasPrefix(strings.TrimSpace(string(line)), "//") {
 				continue
 			}
 
-			k, v := getFieldTag(string(line), msgName)
-			if k == "" || v == "" {
-				continue
-			}
+			k, v := getFieldTag(string(line), msgNameStack.GetPOP())
 
 			r.tags[k] = v
 
@@ -167,11 +168,11 @@ func (r *retag) retag() {
 	buf := bytes.NewBuffer([]byte{})
 
 	reader := bufio.NewReader(readbuf)
-	var begin bool
 	var comment bool
-	var msgName string
+	msgNameStack := NewStack()
 	for {
 		line, _, err := reader.ReadLine()
+		log.Info(string(line))
 		if err != nil {
 			buf.WriteString("\n")
 			break
@@ -195,21 +196,25 @@ func (r *retag) retag() {
 		}
 
 		if r.needRetag(strings.TrimSpace(string(line))) {
-			begin = true
-			msgName = strings.Fields(string(line))[1]
+			if msgNameStack.GetPOP() != "" {
+				msgNameStack.PUSH(msgNameStack.GetPOP() + "_" + strings.Fields(string(line))[1])
+			} else {
+				msgNameStack.PUSH(strings.Fields(string(line))[1])
+			}
+
 			buf.Write(line)
 			buf.WriteString("\n")
 			continue
 		}
 
-		if begin == true && line[0] == '}' {
-			begin = false
+		if msgNameStack.GetPOP() != "" && strings.TrimSpace(string(line))[0] == '}' {
+			msgNameStack.POP()
 			buf.Write(line)
 			buf.WriteString("\n")
 			continue
 		}
 
-		if begin == true {
+		if msgNameStack.GetPOP() != "" {
 			if strings.HasPrefix(strings.TrimSpace(string(line)), "//") {
 				buf.Write(line)
 				buf.WriteString("\n")
@@ -217,7 +222,7 @@ func (r *retag) retag() {
 			}
 
 			fields := strings.Fields(strings.TrimSpace(string(line)))
-			key := msgName + "." + fields[0]
+			key := msgNameStack.GetPOP() + "." + fields[0]
 			tag := r.tags[key]
 			newline := resetTag(string(line), fields[0], tag, r.fieldMaxLen, r.tagMaxLen)
 			buf.WriteString(newline)
