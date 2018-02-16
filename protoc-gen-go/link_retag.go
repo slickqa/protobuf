@@ -1,3 +1,3 @@
 package main
 
-import _ "github.com/golang/protobuf/protoc-gen-go/retag"
+import _ "github.com/slickqa/protobuf/protoc-gen-go/retag"
