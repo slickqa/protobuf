@@ -1,3 +1,3 @@
-module github.com/golang/protobuf
+module github.com/slickqa/protobuf
 
 go 1.12
